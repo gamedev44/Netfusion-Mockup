@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full w-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Editor UI</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" integrity="sha512-ZP+At2hJli3C+Z6VUMzMD/8o0f0VCRTYv7KXzjldXZqA7qZas9Ue3R07QexY0Vz3xTYldUKT1oxZkHzXHg9e1g==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <style>
+    button:hover { filter: brightness(1.2); }
+    [tooltip] {
+      position: relative;
+      z-index: 50;
+    }
+    [tooltip]::after {
+      content: attr(tooltip);
+      position: absolute;
+      background-color: #333;
+      color: white;
+      padding: 2px 6px;
+      border-radius: 4px;
+      top: -24px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 10px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+      white-space: nowrap;
+      z-index: 9999;
+    }
+    [tooltip]:hover::after {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body class="h-full w-full bg-[#1e1e2e] text-white overflow-hidden">
+
+<!-- Header Bar -->
+<div class="w-full bg-[#3a3b4e] flex justify-between items-center p-2 text-sm">
+  <div class="flex items-center gap-2">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/a/a7/React-icon.svg" alt="Logo" class="w-6 h-6">
+    <span class="font-semibold">NetFusion.py  (Game Engine Concept by: Asterisk.)</span>
+  </div>
+  <div class="text-xs text-gray-300">Active Testers: <span id="active-users">2</span></div>
+</div>
+
+<div class="flex h-[calc(100%-40px)]">
+  <!-- Sidebar -->
+  <div id="sidebar" class="w-64 bg-[#2b2d3c] flex flex-col transition-all duration-200">
+    <div class="p-3 border-b border-gray-700">Scene Graph (List of Levels/Sublevels)</div>
+    <div class="flex-1 overflow-auto text-sm p-2">
+      <ul>
+        <li class="pl-2">🌐 world</li> (Persistent Level with option to add more via number field Ammnt[] and add names for each via renaming them etc...)
+        <li class="pl-4">📁 local</li> (Client/Lan Levels)
+        <li class="pl-4">📁 server</li>(Listen/Standalone Levels)
+        <li class="pl-4 opacity-60">📁 prefabs</li>
+      </ul>
+    </div>
+    <div class="p-3 border-t border-gray-700 flex justify-between items-center">
+      <span>Project</span>
+      <button tooltip="Add File/Folder" onclick="alert('Add functionality here')" class="text-white text-lg">➕</button>
+    </div>
+    <div class="flex-1 overflow-auto text-sm p-2">
+      <ul>
+        <li>📁 assets</li>
+        <li>📁 Backend</li>
+        <li>📁 FrontEnd</li>
+        <li>📁 core modules</li>
+        <li>📁 components</li>
+        <li>📁 MicroChips</li>
+        <li>📁 src</li>
+        <li>📄 .gitignore</li>
+        <li>📄 project.json</li>
+        <li>📄 utils.ts</li>
+        <li>📄 index.html</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="flex-1 flex flex-col overflow-hidden">
+    <!-- Top bar -->
+    <div class="flex items-center justify-between bg-[#2b2d3c] p-2 border-b border-gray-700">
+      <div class="flex gap-2">
+        <button tooltip="Package" class="bg-blue-500 p-2 rounded text-sm">📦Package</button>
+        <button tooltip="Debug" class="bg-red-500 p-2 rounded text-sm">🧩Debug</button>
+        <button tooltip="Play" class="bg-green-500 p-2 rounded text-sm">🎮Play</button>
+      </div>
+      <div class="text-xs opacity-70">Ping .08ms ⟳</div>
+    </div>
+
+    <!-- Editor Area -->
+    <div class="flex flex-1">
+      <!-- Canvas / Editor viewport -->
+      <div class="flex-1 bg-black relative z-0">
+        <div class="absolute top-2 left-2 flex gap-2 z-10">
+          <button tooltip="3D Translate Tool" class="bg-pink-600 p-1 rounded">
+            <i class="fa-duotone fa-light fa-chart-scatter-3d"></i>
+          </button>
+          <button tooltip="Selection Tool" class="bg-blue-600 p-1 rounded">
+            <i class="fa-duotone fa-thin fa-square-dashed"></i>
+          </button>
+        </div>
+        <div class="absolute bottom-0 left-0 text-xs text-gray-400 m-2">
+          Camera [0.00, 0.00] | Cursor [16.37, -9.77] | Zoom 8.15x | Fps [∞] | Buildnum:# r 0.0.0.1.0
+        </div>
+      </div>
+
+      <!-- Properties panel -->
+      <div class="w-64 bg-[#2b2d3c] border-l border-gray-700 flex flex-col">
+        <div class="p-2 border-b border-gray-700">Level Hierarchy</div>
+        <div class="flex-1 flex items-center justify-center text-xs text-gray-400 px-2 text-center">
+          Select an Object or Entity to view its properties Below in the Details Panel.
+        </div>
+        <div class="p-2 border-t border-gray-700">Details Panel</div>
+        <div class="flex-1 flex items-center justify-center text-xs text-gray-400 px-2 text-center">
+          Select an entity to view its details and instance editable variable driven behaviors.
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Tabs -->
+    <div class="bg-[#2b2d3c] border-t border-gray-700 text-sm flex">
+      <button class="px-4 py-2 hover:bg-[#3a3b4e]">Local Content</button>
+      <button class="px-4 py-2 hover:bg-[#3a3b4e]">Community Content</button>
+      <button class="px-4 py-2 hover:bg-[#3a3b4e]">Debug / Error Logs</button>
+      <div class="ml-auto px-4 py-2 text-xs text-gray-400 cursor-pointer hover:underline">Clear chat history</div>
+    </div>
+
+    <!-- Code Editor Toggle -->
+    <div class="bg-[#1e1e2e] border-t border-gray-700">
+      <button onclick="document.getElementById('code-box').classList.toggle('hidden')" class="w-full text-left px-4 py-2 hover:bg-[#3a3b4e] text-xs text-gray-300">
+        Toggle Logic Graph
+      </button>
+      <div id="code-box" class="hidden">
+        <textarea placeholder="This Input Field is Tied to the Current Selection of an object by defualt any code you add here will only affect that object... Thus Enable to affect multiple objects or levels then use hold shift select and click all assets you want from project dir and they will be auto selected or all cmpatible objects will / files they must have a extension compatable like .netobject or .netskele etc something  optionally instead of wrting script user can simply chose object and then here after getting object in selection they simply press a Pick Button this lets me navigate via the project tab or local content folder Thus allowing me to pick my .FusionScript Files via Choose fromt ehre it auto adds it into the input field upon choosing that filetype etc...  ..." class="w-full bg-[#2b2d3c] text-white p-2 h-32 resize-none text-xs"></textarea>
+      </div>
+    </div>
+
+    <!-- Chat box -->
+    <div class="bg-[#1e1e2e] border-t border-gray-700 flex">
+      <input type="text" placeholder="Say something" class="flex-1 bg-transparent px-4 py-2 text-white outline-none" />
+      <button class="px-4 text-white">➤</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Tab") {
+      e.preventDefault();
+      document.getElementById("sidebar").classList.toggle("hidden");
+    }
+  });
+</script>
+
+</body>
+</html>

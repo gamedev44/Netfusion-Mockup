@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full w-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>NetFusion.py</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.babylonjs.com/babylon.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/cannon@0.6.2/build/cannon.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/ammo.js"></script>
+  <script src="https://cdn.example.com/havok.js"></script>
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+    integrity="sha512-ZP+At2hJli3C+Z6VUMzMD/8o0f0VCRTYv7KXzjldXZqA7qZas9Ue3R07QexY0Vz3xTYldUKT1oxZkHzXHg9e1g=="
+    crossorigin="anonymous"
+    referrerpolicy="no-referrer"
+  />
+  <style>
+    /* Remove fixed zoom; rely on responsive units */
+    body {
+      /* Instead of zoom:150%, we use responsive units */
+      font-size: 1rem;
+    }
+    button:hover {
+      filter: brightness(1.2);
+    }
+    [tooltip] {
+      position: relative;
+      z-index: 1000;
+    }
+    [tooltip]::after {
+      content: attr(tooltip);
+      position: absolute;
+      background-color: #333;
+      color: white;
+      padding: 2px 6px;
+      border-radius: 4px;
+      top: -24px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 10px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+      white-space: nowrap;
+      z-index: 9999;
+    }
+    [tooltip]:hover::after {
+      opacity: 1;
+    }
+    #viewer2D {
+      display: none;
+      background-color: #222;
+    }
+    #ideFrame {
+      display: none;
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+    #bottomPanel {
+      height: 220px;
+    }
+    .tab-button {
+      padding: 0.5rem 1rem;
+    }
+    .tab-button.active {
+      background-color: #3a3b4e;
+    }
+    .tab-content {
+      display: none;
+      height: calc(100% - 2rem);
+      overflow: auto;
+    }
+    .tab-content.active {
+      display: block;
+    }
+    .details-label {
+      color: #a0a0a0;
+      font-size: 0.75rem;
+      margin-right: 4px;
+    }
+    .details-input {
+      width: 100%;
+      margin-bottom: 6px;
+      background-color: #2b2d3c;
+      border: 1px solid #444;
+      color: #fff;
+      font-size: 0.75rem;
+      padding: 2px 4px;
+    }
+    /* Built-in Code Editor Container (moved to top-right) */
+    #codeEditorContainer {
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: 40vw;
+      height: 50vh;
+      background-color: #1e1e2e;
+      border-left: 1px solid #444;
+      border-bottom: 1px solid #444;
+      z-index: 10000;
+      display: none; /* show when toggled */
+      flex-direction: column;
+    }
+    #editorToolbar {
+      background-color: #2b2d3c;
+      padding: 4px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      border-bottom: 1px solid #444;
+    }
+    #codeInput {
+      flex: 1;
+      width: 100%;
+      resize: none;
+      background-color: #1e1e2e;
+      border: none;
+      outline: none;
+      color: #00ff00;
+      font-size: 12px;
+      padding: 8px;
+      font-family: monospace;
+    }
+    #vsCodeFrame {
+      display: none;
+    }
+    /* Modal Styles */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.7);
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+    .modal-content {
+      background-color: #333;
+      padding: 20px;
+      border-radius: 8px;
+      max-width: 500px;
+      width: 80%;
+      color: white;
+      position: relative;
+    }
+    .modal-header {
+      font-size: 1.5rem;
+      margin-bottom: 10px;
+      font-weight: bold;
+    }
+    .modal-body p {
+      margin-bottom: 10px;
+    }
+    .modal-close {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: none;
+      border: none;
+      color: white;
+      font-size: 20px;
+      cursor: pointer;
+    }
+    .modal-button {
+      padding: 10px 20px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .modal-button:hover {
+      background-color: #45a049;
+    }
+  </style>
+</head>
+<body class="h-full w-full bg-[#1e1e2e] text-white overflow-hidden">
+  
+  <!-- Intro Modal -->
+  <div id="introModal" class="modal-overlay">
+    <div class="modal-content">
+      <button id="closeIntro" class="modal-close">&times;</button>
+      <div class="modal-header">⚠️Early-Alpha Development Notice⚠️</div>
+      <div class="modal-body">
+        <p>This Engine is in a very early alpha phase. It's being programmed and tested by a single developer, so updates and improvements may take time.</p>
+        <p>Each tool is modular, meaning you can load them as separate Python files found in the modules folder. Feel free to suggest or create new modules—just let us know and we'll integrate them easily.</p>
+        <p>This version was never meant to fully function—only to function enough for me to decide how I wanted to make it look and feel. This is subject to change over the next few weeks as I port it to Python.</p>
+        <p>Game engines take time and care to develop, so be patient. The day for updates will come when we switch this concept out with a fully working version 1 sometime in the following weeks.</p>
+        <p>Note that each button on the left has a brief tooltip explaining how it works and which sliders it offers. Please explore responsibly and share any feedback you have!</p>
+      </div>
+      <button id="introOk" class="modal-button">OK, Got It!</button>
+    </div>
+  </div>
+  
+  <!-- Header Bar -->
+  <div class="w-full bg-[#3a3b4e] flex justify-between items-center p-2 text-sm">
+    <div class="flex items-center gap-2">
+      <i class="fa-solid fa-atom text-blue-400"></i>
+      <span class="font-semibold">NetFusion.py</span>
+      <span class="text-xs text-gray-400">(Game Engine Concept by: Asterisk.)</span>
+    </div>
+    <div class="text-xs text-gray-300">
+      Active Testers: <span id="active-users">2</span> |
+      <span id="headerMetrics">Ping: 0ms</span>
+    </div>
+  </div>
+  
+  <div class="flex h-[calc(100%-40px)]">
+    <!-- Sidebar -->
+    <div id="sidebar" class="w-64 bg-[#2b2d3c] flex flex-col transition-all duration-200">
+      <div class="p-3 border-b border-gray-700">Scene Graph</div>
+      <div class="flex-1 overflow-auto text-sm p-2" id="sceneGraphList">
+        <ul id="scene-levels">
+          <li tooltip="Persistent Level" class="pl-2">🌐 world</li>
+          <li tooltip="Client/Lan Levels" class="pl-4">📁 local</li>
+          <li tooltip="Listen/Standalone Levels" class="pl-4">📁 server</li>
+          <li class="pl-4 opacity-60">📁 prefabs</li>
+        </ul>
+      </div>
+      <div class="p-3 border-t border-gray-700 flex justify-between items-center">
+        <span>Project</span>
+        <button tooltip="Add File/Folder" id="addFolderBtn" class="text-white text-lg">➕</button>
+      </div>
+      <div class="flex-1 overflow-auto text-sm p-2">
+        <ul id="projectFolders">
+          <li class="text-yellow-300" tooltip="Right-click for more">📁 assets</li>
+          <li class="text-red-300" tooltip="Right-click for more">📁 Backend</li>
+          <li class="text-blue-300" tooltip="Right-click for more">📁 FrontEnd</li>
+          <li tooltip="Right-click for more">📁 core modules</li>
+          <li tooltip="Right-click for more">📁 components</li>
+          <li tooltip="Right-click for more">📁 MicroChips</li>
+          <li tooltip="Right-click for more">📁 src</li>
+          <li>📄 .gitignore</li>
+          <li>📄 project.json</li>
+          <li>📄 utils.ts</li>
+          <li>📄 index.html</li>
+        </ul>
+      </div>
+    </div>
+    
+    <!-- Main Content Area -->
+    <div class="flex-1 flex flex-col overflow-hidden">
+      <!-- Top Control Row -->
+      <div class="flex justify-between items-center px-2 py-1 bg-[#2b2d3c] border-b border-gray-700 text-sm">
+        <div class="flex gap-2">
+          <button tooltip="Package" class="bg-blue-500 px-3 py-1 rounded">📦 Package</button>
+          <button tooltip="Debug" class="bg-red-500 px-3 py-1 rounded">🧩 Debug</button>
+          <button tooltip="Play" class="bg-green-500 px-3 py-1 rounded">🎮 Play</button>
+        </div>
+        <div class="flex gap-2">
+          <button class="bg-gray-600 px-2 py-1 rounded text-xs" id="mode3D">3D</button>
+          <button class="bg-gray-600 px-2 py-1 rounded text-xs" id="mode2D">2D</button>
+          <button class="bg-yellow-500 px-2 py-1 rounded text-xs" id="physicsToggle">Switch Physics</button>
+          <label class="text-xs text-gray-400 ml-2 flex items-center">
+            <input type="checkbox" id="liveCode" class="mr-1">Live Code
+          </label>
+          <span class="text-xs text-gray-400 ml-4" id="metrics">FPS: 60</span>
+        </div>
+      </div>
+      
+      <!-- Viewport + Right Sidebar -->
+      <div class="flex flex-1">
+        <div class="flex-1 bg-black relative">
+          <canvas id="viewer" class="w-full h-full block"></canvas>
+          <canvas id="viewer2D" class="w-full h-full block"></canvas>
+          <iframe id="ideFrame"></iframe>
+        </div>
+        <div class="w-64 bg-[#2b2d3c] border-l border-gray-700 flex flex-col">
+          <div class="p-2 border-b border-gray-700">Level Hierarchy</div>
+          <div class="flex-1 overflow-auto text-sm" id="hierarchyList">
+            <ul id="sceneObjects" class="p-2"></ul>
+          </div>
+          <div class="p-2 border-t border-gray-700">Details Panel</div>
+          <div class="flex-1 overflow-auto p-2 text-xs">
+            <div id="detailsPanel" class="text-white text-sm"></div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Bottom Tabs (Content / Logs) -->
+      <div id="bottomPanel" class="bg-[#2b2d3c] border-t border-gray-700 text-sm relative">
+        <div class="flex border-b border-gray-700">
+          <button class="tab-button" data-tab="localContent">Local Content</button>
+          <button class="tab-button" data-tab="communityContent">Community Content</button>
+          <button class="tab-button" data-tab="debugLogs">Debug / Error Logs</button>
+          <button class="tab-button" data-tab="repairRefs">Repair References</button>
+          <div class="ml-auto text-xs text-gray-400 cursor-pointer hover:underline px-4 py-2" id="clearChat">
+            Clear chat history
+          </div>
+        </div>
+        <!-- Local Content Tab -->
+        <div id="localContent" class="tab-content p-2">
+          <div class="mb-2">
+            <input
+              type="text"
+              placeholder="Search Local Content..."
+              class="text-xs p-1 w-1/2 bg-[#1e1e2e] border border-gray-600"
+            />
+          </div>
+          <ul>
+            <li>Local File 1</li>
+            <li>Local File 2</li>
+          </ul>
+        </div>
+        <!-- Community Content Tab -->
+        <div id="communityContent" class="tab-content p-2">
+          <div class="mb-2">
+            <input
+              type="text"
+              placeholder="Search Community Content..."
+              class="text-xs p-1 w-1/2 bg-[#1e1e2e] border border-gray-600"
+            />
+          </div>
+          <ul>
+            <li>Community Asset 1</li>
+            <li>Community Asset 2</li>
+          </ul>
+        </div>
+        <!-- Debug Logs Tab -->
+        <div id="debugLogs" class="tab-content p-2">
+          <ul id="logList" class="text-xs"></ul>
+        </div>
+        <!-- Repair References Tab -->
+        <div id="repairRefs" class="tab-content p-2">
+          <p class="text-xs">Repair references UI goes here.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Built-in Code Editor Container (Top-Right) -->
+  <div id="codeEditorContainer">
+    <div id="editorToolbar">
+      <button id="switchToBuiltIn" class="bg-gray-600 px-2 py-1 rounded">Interpreter</button>
+      <button id="switchToVSCode" class="bg-gray-600 px-2 py-1 rounded">Replit</button>
+      <button id="closeEditor" class="ml-auto text-xs">✖</button>
+    </div>
+    <textarea id="codeInput"></textarea>
+    <iframe id="vsCodeFrame" src="about:blank" class="flex-1 border-none"></iframe>
+  </div>
+  
+  <script>
+    let canvas3D = document.getElementById("viewer");
+    let canvas2D = document.getElementById("viewer2D");
+    let ideFrame = document.getElementById("ideFrame");
+    let vsCodeFrame = document.getElementById("vsCodeFrame");
+    let codeEditorContainer = document.getElementById("codeEditorContainer");
+    let codeTextArea = document.getElementById("codeInput");
+    
+    let engine = new BABYLON.Engine(canvas3D, true);
+    let scene;
+    let frameCount = 0;
+    let lastTime = performance.now();
+    let physicsEngines = ["Cannon", "Ammo", "Havok"];
+    let currentPhysicsIndex = 0;
+    let currentPhysics = physicsEngines[currentPhysicsIndex];
+    let sceneObjects = [];
+    let selectedObject = null;
+    
+    // Default script
+    codeTextArea.value = `
+scene.clearColor = new BABYLON.Color3(0.1, 0.1, 0.1);
+const camera = new BABYLON.ArcRotateCamera("cam", Math.PI/2, Math.PI/2.5, 10, BABYLON.Vector3.Zero(), scene);
+camera.attachControl(canvas, true);
+const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(1, 1, 0), scene);
+const box = BABYLON.MeshBuilder.CreateBox("box", {}, scene);
+`;
+    
+    function runUserCode(code) {
+      if (scene) scene.dispose();
+      scene = new BABYLON.Scene(engine);
+      try {
+        const fn = new Function("scene", "canvas", code);
+        fn(scene, canvas3D);
+      } catch (e) {
+        console.error("Script error:", e);
+        logMessage("Script error: " + e);
+      }
+    }
+    
+    function logMessage(msg) {
+      let logList = document.getElementById("logList");
+      let li = document.createElement("li");
+      li.textContent = msg;
+      logList.appendChild(li);
+    }
+    
+    function refreshHierarchy() {
+      let list = document.getElementById("sceneObjects");
+      list.innerHTML = "";
+      sceneObjects.forEach((obj, index) => {
+        let li = document.createElement("li");
+        li.textContent = obj.name + " (" + obj.type + ")";
+        li.style.cursor = "pointer";
+        li.onclick = () => selectObject(index);
+        list.appendChild(li);
+      });
+    }
+    
+    function selectObject(idx) {
+      selectedObject = sceneObjects[idx];
+      showDetails();
+    }
+    
+    function showDetails() {
+      let panel = document.getElementById("detailsPanel");
+      if (!selectedObject) {
+        panel.innerHTML = "No object selected.";
+        return;
+      }
+      panel.innerHTML = "";
+      let obj = selectedObject;
+    
+      let container = document.createElement("div");
+      container.className = "grid grid-cols-2 gap-2";
+    
+      let nameLabel = document.createElement("label");
+      nameLabel.className = "details-label";
+      nameLabel.textContent = "Name:";
+      container.appendChild(nameLabel);
+    
+      let nameInput = document.createElement("input");
+      nameInput.className = "details-input";
+      nameInput.value = obj.name;
+      nameInput.onchange = () => {
+        obj.name = nameInput.value;
+        refreshHierarchy();
+      };
+      container.appendChild(nameInput);
+    
+      let typeLabel = document.createElement("label");
+      typeLabel.className = "details-label";
+      typeLabel.textContent = "Type:";
+      container.appendChild(typeLabel);
+    
+      let typeSelect = document.createElement("select");
+      typeSelect.className = "details-input";
+      ["box", "sphere"].forEach(t => {
+        let opt = document.createElement("option");
+        opt.value = t;
+        opt.textContent = t;
+        if (obj.type === t) opt.selected = true;
+        typeSelect.appendChild(opt);
+      });
+      typeSelect.onchange = () => {
+        changeMeshType(obj, typeSelect.value);
+      };
+      container.appendChild(typeSelect);
+    
+      let colorLabel = document.createElement("label");
+      colorLabel.className = "details-label";
+      colorLabel.textContent = "Color:";
+      container.appendChild(colorLabel);
+    
+      let colorInput = document.createElement("input");
+      colorInput.type = "color";
+      colorInput.className = "details-input";
+      colorInput.value = obj.color;
+      colorInput.onchange = () => {
+        obj.color = colorInput.value;
+        if (obj.mesh.material) {
+          obj.mesh.material.diffuseColor = BABYLON.Color3.FromHexString(obj.color);
+        }
+      };
+      container.appendChild(colorInput);
+    
+      ["x", "y", "z"].forEach(axis => {
+        let axisLabel = document.createElement("label");
+        axisLabel.className = "details-label";
+        axisLabel.textContent = "Pos " + axis.toUpperCase() + ":";
+        container.appendChild(axisLabel);
+    
+        let axisInput = document.createElement("input");
+        axisInput.type = "number";
+        axisInput.className = "details-input";
+        axisInput.value = obj.position[axis];
+        axisInput.onchange = () => {
+          obj.position[axis] = parseFloat(axisInput.value);
+          obj.mesh.position[axis] = obj.position[axis];
+        };
+        container.appendChild(axisInput);
+      });
+    
+      let delLabel = document.createElement("label");
+      delLabel.className = "details-label";
+      delLabel.textContent = "Remove:";
+      container.appendChild(delLabel);
+    
+      let delBtn = document.createElement("button");
+      delBtn.textContent = "Delete Object";
+      delBtn.className = "bg-red-600 text-xs px-2 py-1 rounded";
+      delBtn.onclick = () => {
+        deleteObject(obj);
+      };
+      container.appendChild(delBtn);
+    
+      panel.appendChild(container);
+    }
+    
+    function createObject(type = "box", name = "NewMesh") {
+      let mesh;
+      if (type === "box") {
+        mesh = BABYLON.MeshBuilder.CreateBox(name, {}, scene);
+      } else {
+        mesh = BABYLON.MeshBuilder.CreateSphere(name, { diameter: 1 }, scene);
+      }
+      let mat = new BABYLON.StandardMaterial(name + "_mat", scene);
+      mat.diffuseColor = new BABYLON.Color3(1, 1, 1);
+      mesh.material = mat;
+      let objData = {
+        name: name,
+        type: type,
+        color: "#ffffff",
+        position: { x: 0, y: 0, z: 0 },
+        mesh: mesh
+      };
+      sceneObjects.push(objData);
+      refreshHierarchy();
+    }
+    
+    function changeMeshType(obj, newType) {
+      let oldMesh = obj.mesh;
+      let pos = oldMesh.position.clone();
+      let col = obj.color;
+      oldMesh.dispose();
+      let newMesh;
+      if (newType === "sphere") {
+        newMesh = BABYLON.MeshBuilder.CreateSphere(obj.name, { diameter: 1 }, scene);
+      } else {
+        newMesh = BABYLON.MeshBuilder.CreateBox(obj.name, {}, scene);
+      }
+      let mat = new BABYLON.StandardMaterial(obj.name + "_mat", scene);
+      mat.diffuseColor = BABYLON.Color3.FromHexString(col);
+      newMesh.material = mat;
+      newMesh.position = pos;
+      obj.mesh = newMesh;
+      obj.type = newType;
+    }
+    
+    function deleteObject(obj) {
+      let idx = sceneObjects.indexOf(obj);
+      if (idx > -1) {
+        obj.mesh.dispose();
+        sceneObjects.splice(idx, 1);
+        selectedObject = null;
+        refreshHierarchy();
+        showDetails();
+      }
+    }
+    
+    function runBasicScene() {
+      if (scene) scene.dispose();
+      scene = new BABYLON.Scene(engine);
+      scene.clearColor = new BABYLON.Color3(0.1, 0.1, 0.1);
+      let camera = new BABYLON.ArcRotateCamera(
+        "cam",
+        Math.PI / 2,
+        Math.PI / 2.5,
+        10,
+        BABYLON.Vector3.Zero(),
+        scene
+      );
+      camera.attachControl(canvas3D, true);
+      let light = new BABYLON.HemisphericLight(
+        "light",
+        new BABYLON.Vector3(1, 1, 0),
+        scene
+      );
+    }
+    
+    document.getElementById("addFolderBtn").onclick = () => {
+      let choice = prompt("Add a mesh or a light? (mesh/light)");
+      if (!choice) return;
+      if (choice.toLowerCase() === "mesh") {
+        let meshType = prompt("Type of mesh? (box/sphere)");
+        createObject(meshType || "box");
+      } else if (choice.toLowerCase() === "light") {
+        alert("Add light creation code here as needed.");
+      }
+    };
+    
+    document.getElementById("mode3D").onclick = () => {
+      canvas3D.style.display = "block";
+      canvas2D.style.display = "none";
+      ideFrame.style.display = "none";
+      vsCodeFrame.style.display = "none";
+    };
+    
+    document.getElementById("mode2D").onclick = () => {
+      canvas3D.style.display = "none";
+      ideFrame.style.display = "none";
+      vsCodeFrame.style.display = "none";
+      canvas2D.style.display = "block";
+      let ctx = canvas2D.getContext("2d");
+      ctx.fillStyle = "#ffffff";
+      ctx.clearRect(0, 0, canvas2D.width, canvas2D.height);
+      ctx.fillRect(10, 10, 50, 50);
+    };
+    
+    document.getElementById("physicsToggle").onclick = () => {
+      currentPhysicsIndex = (currentPhysicsIndex + 1) % physicsEngines.length;
+      currentPhysics = physicsEngines[currentPhysicsIndex];
+      alert("Switched Physics to: " + currentPhysics);
+    };
+    
+    document.getElementById("liveCode").onchange = () => {
+      if (document.getElementById("liveCode").checked) {
+        runUserCode(codeTextArea.value);
+      }
+    };
+    
+    // Bottom tab handling
+    let tabButtons = document.querySelectorAll(".tab-button");
+    let tabContents = document.querySelectorAll(".tab-content");
+    tabButtons.forEach(btn => {
+      btn.addEventListener("click", () => {
+        tabButtons.forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        let target = btn.getAttribute("data-tab");
+        tabContents.forEach(tc => {
+          tc.classList.remove("active");
+          if (tc.id === target) tc.classList.add("active");
+        });
+      });
+    });
+    
+    // Clear chat
+    document.getElementById("clearChat").onclick = () => {
+      let logList = document.getElementById("logList");
+      logList.innerHTML = "";
+    };
+    
+    // Built-in code editor input
+    codeTextArea.addEventListener("input", () => {
+      if (document.getElementById("liveCode").checked) {
+        runUserCode(codeTextArea.value);
+      }
+    });
+    
+    // Editor mode toggles
+    let switchToBuiltIn = document.getElementById("switchToBuiltIn");
+    let switchToVSCode = document.getElementById("switchToVSCode");
+    let closeEditor = document.getElementById("closeEditor");
+    
+    switchToBuiltIn.onclick = () => {
+      codeEditorContainer.style.display = "flex";
+      vsCodeFrame.style.display = "none";
+      if (document.getElementById("liveCode").checked) {
+        runUserCode(codeTextArea.value);
+      }
+    };
+    
+    switchToVSCode.onclick = () => {
+      codeEditorContainer.style.display = "flex";
+      vsCodeFrame.style.display = "block";
+      vsCodeFrame.src = "https://replit.com/new";
+    };
+    
+    closeEditor.onclick = () => {
+      codeEditorContainer.style.display = "none";
+    };
+    
+    // Render loop
+    engine.runRenderLoop(() => {
+      if (scene) scene.render();
+      let now = performance.now();
+      frameCount++;
+      if (now - lastTime >= 1000) {
+        let fps = frameCount;
+        let ping = (Math.random() * 0.2).toFixed(2);
+        document.getElementById("metrics").textContent = "FPS: " + fps;
+        document.getElementById("headerMetrics").textContent = "Ping: " + ping + "ms";
+        frameCount = 0;
+        lastTime = now;
+      }
+    });
+    
+    window.addEventListener("resize", () => {
+      engine.resize();
+      canvas2D.width = canvas2D.clientWidth;
+      canvas2D.height = canvas2D.clientHeight;
+    });
+    
+    // Modal handling
+    window.onload = function() {
+      document.getElementById("introModal").style.display = "flex";
+    };
+    
+    document.getElementById("introOk").onclick = function() {
+      document.getElementById("introModal").style.display = "none";
+    };
+    
+    document.getElementById("closeIntro").onclick = function() {
+      document.getElementById("introModal").style.display = "none";
+    };
+    
+    // Initialize
+    runUserCode(codeTextArea.value);
+    createObject("box", "InitialBox");
+    runBasicScene();
+  </script>
+</body>
+</html>
